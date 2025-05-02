@@ -7,8 +7,6 @@ print "Alargon's Hub executed!"
 
 local Tab = Window:NewTab("Character")
 
-local Section = Tab:NewSection("Ez")
-
 Section:NewSlider("Speed", "Just speeds up the player", 500, 16, function(s) -- 500 (Макс. значение) | 0 (Мин. значение)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
 end)
