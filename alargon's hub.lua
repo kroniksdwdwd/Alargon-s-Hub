@@ -7,7 +7,7 @@ print "Alargon's Hub executed!"
 
 local Tab = Window:NewTab("Character")
 
-local Section = Tab:NewSection("Movement")
+local Section = Character:NewSection("Movement")
 
 Section:NewSlider("Speed", "Just speeds up the player", 500, 16, function(s) -- 500 (Макс. значение) | 0 (Мин. значение)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
@@ -60,7 +60,7 @@ Section:NewButton("Noclip", "Allows you to pass through walls and more", functio
 	noclip() -- to toggle noclip() and clip()
 end)
 
-local Section = Tab:NewSection("Others")
+local Section = Character:NewSection("Others")
 
 Section:NewButton("Teleport Tool", "When you take the teleport object in your hands, where you press there you teleport", function()
 	mouse = game.Players.LocalPlayer:GetMouse()
