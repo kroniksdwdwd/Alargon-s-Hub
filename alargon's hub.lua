@@ -5,9 +5,9 @@ local Window = Library.CreateLib("alargon's hub", "RJTheme5")
 
 print "Alargon's Hub executed!"
 
-local Tab = Window:NewTab("Character")
+local Tab = Window:NewTab("Main")
 
-local Section = Character:NewSection("Movement")
+local Section = Character:NewSection("Character")
 
 Section:NewSlider("Speed", "Just speeds up the player", 500, 16, function(s) -- 500 (Макс. значение) | 0 (Мин. значение)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
