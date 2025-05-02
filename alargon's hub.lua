@@ -60,7 +60,7 @@ Section:NewButton("Noclip", "Allows you to pass through walls and more", functio
 	noclip() -- to toggle noclip() and clip()
 end)
 
-
+local Section = Tab:NewSection("Others")
 
 Section:NewButton("Teleport Tool", "When you take the teleport object in your hands, where you press there you teleport", function()
 	mouse = game.Players.LocalPlayer:GetMouse()
