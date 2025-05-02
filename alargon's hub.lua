@@ -25,6 +25,10 @@ Section:NewButton("FlyGUI (for mobile and pc)", "This is not my fly gui", functi
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
 end)
 
+Section:NewButton("Ivisible FE (click e to invisible or visible)", "Just you invisible", function()
+	loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-fe-invisible-4366"))()
+end)
+
 Section:NewButton("Infinity Jump", "Jump forever", function()
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Kron-Hub/refs/heads/main/dadawdadsssss22"))()
 end)
