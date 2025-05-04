@@ -102,6 +102,9 @@ Section:NewButton("Invisible [E]", "Press E button to invisible", function()
 	loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-fe-invisible-4366"))()
 end)
 
+Section:NewButton("Touch Fling Menu", "Killing all", function()
+	loadstring(game:HttpGet('https://pastefy.app/9H7HB61F/raw'))()
+end)
 
 
 
