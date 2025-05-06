@@ -11,12 +11,24 @@ Section:NewSlider("Speed", "Just speeds up the player", 500, 16, function(s) -- 
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
 end)
 
+Section:NewTextBox("Speed", "Ez", function(txt)
+	game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = txt
+end)
+
 Section:NewSlider("Jump", "Simply increases the player's jumppower", 500, 50, function(j) -- 500 (Макс. значение) | 0 (Мин. значение)
     game.Players.LocalPlayer.Character.Humanoid.JumpPower = j
 end)
 
+Section:NewTextBox("JumpPower", "Ez", function(txc)
+	game.Players.LocalPlayer.Character.Humanoid.JumpPower = txc
+end)
+
 Section:NewSlider("Gravity", "Simply increases the player's gravity", 0, 300, function(g) -- 500 (Макс. значение) | 0 (Мин. значение)
     game.Workspace.Gravity = g
+end)
+
+Section:NewTextBox("Gravity", "Ez", function(txa)
+	game.Workspace.Gravity = txa
 end)
 
 Section:NewButton("FlyGUI (for mobile and pc)", "This is not my fly gui", function()
@@ -102,9 +114,6 @@ Section:NewButton("Invisible [E]", "Press E button to invisible", function()
 	loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-fe-invisible-4366"))()
 end)
 
-Section:NewButton("Touch Fling Menu", "Killing all", function()
-	loadstring(game:HttpGet('https://pastefy.app/9H7HB61F/raw'))()
-end)
 
 
 
@@ -122,7 +131,7 @@ Section:NewButton("Night", "Always night", function()
 	game.Lighting.TimeOfDay = 0
 end)
 
-Section:NewButton("Fullbright", "Always night", function()
+Section:NewToggle("Fullbright", "Always night", function()
 	if not _G.FullBrightExecuted then
 
 	_G.FullBrightEnabled = false
