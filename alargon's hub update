@@ -45,26 +45,6 @@ Section:NewButton("Copy YouTube Link", "Click to copy YouTube channel", function
     })
 end)
 
--- Альтернативная версия с попыткой открытия ссылки (если нужно)
-local function tryOpenUrl(url)
-    local success, result = pcall(function()
-        -- Способ 1: Через GuiService (если доступен)
-        if game:GetService("GuiService").OpenBrowserWindow then
-            return game:GetService("GuiService"):OpenBrowserWindow(url)
-        end
-        
-        -- Способ 2: Через текстовое окно (универсальный)
-        local text = "Please visit: "..url
-        game.StarterGui:SetCore("DevConsoleVisible", false)
-        game.StarterGui:SetCore("DevConsoleVisible", true)
-        game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(text)
-    end)
-    
-    if not success then
-        warn("Failed to open URL: "..tostring(result))
-    end
-end
-
 -- Информационные метки
 Section:NewLabel("Owner - Alargon's Scripts")
 Section:NewLabel("Discord - discord.gg/SbkqJ8VjFb")
