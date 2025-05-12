@@ -20,34 +20,29 @@ local Tab = Window:NewTab("Credits")
 local Section = Tab:NewSection("About")
 
 -- Кнопка для копирования Discord
-Section:NewButton("Copy Discord Link", "Click to copy discord link", function()
-    local textToCopy = "discord.gg/SbkqJ8VjFb"
-    setclipboard(textToCopy)
+Section:NewButton("Copy Discord Link", "Click to copy Discord invite", function()
+    setclipboard("https://discord.com/invite/SbkqJ8VjFb")
     
     game.StarterGui:SetCore("SendNotification", {
-        Title = "✅ Copied!",
-        Text = "Discord link copied to clipboard",
-        Duration = 3,
-        Icon = "rbxassetid://6726578075" -- Иконка галочки
+        Title = "COPIED",
+        Text = "Discord invite link copied",
+        Duration = 2
     })
 end)
 
--- Кнопка для YouTube (только копирование)
+-- Кнопка для копирования YouTube
 Section:NewButton("Copy YouTube Link", "Click to copy YouTube channel", function()
-    local youtubeUrl = "https://www.youtube.com/@AlargonsScripts"
-    setclipboard(youtubeUrl)
+    setclipboard("https://www.youtube.com/@AlargonsScripts")
     
     game.StarterGui:SetCore("SendNotification", {
-        Title = "YouTube",
-        Text = "Channel link copied to clipboard",
-        Duration = 3,
-        Icon = "rbxassetid://6726578075"
+        Title = "COPIED",
+        Text = "YouTube link copied",
+        Duration = 2
     })
 end)
 
--- Информационные метки
+-- Текстовые метки
 Section:NewLabel("Owner - Alargon's Scripts")
-Section:NewLabel("Discord - discord.gg/SbkqJ8VjFb")
-Section:NewLabel("YouTube - youtube.com/@AlargonsScripts")
+Section:NewLabel("Discord - discord.com/invite/SbkqJ8VjFb")
 Section:NewLabel("YouTube - youtube.com/@AlargonsScripts")
 
