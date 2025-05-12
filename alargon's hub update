@@ -1,4 +1,71 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/refs/heads/main/alargon's%20hub.lua"))()
-if game.PlaceId == 1537690962 then
-      loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/refs/heads/main/gaames"))()
-end
+
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Robojini/Tuturial_UI_Library/main/UI_Template_1"))()
+
+local Window = Library.CreateLib("alargon's hub I Universal", "RJTheme5")
+
+local Tab = Window:NewTab("Games")
+
+local Section = Tab:NewSection("Hubs")
+
+Section:NewButton("alargon's hub I Universal", "Just join to smallest server", function()
+      loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/refs/heads/main/alargon's%20hub.lua"))()
+end)
+
+Section:NewButton("alargon's hub I Roblox Army RP", "Just join to smallest server", function()
+      if game.PlaceId == 18537079992 then
+      loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/refs/heads/main/alargon's%20hub.lua"))()
+end)
+
+
+local Tab = Window:NewTab("Credits")
+local Section = Tab:NewSection("About")
+
+-- Кнопка для копирования Discord
+Section:NewButton("Copy Discord Link", "Click to copy discord link", function()
+    local textToCopy = "discord.gg/SbkqJ8VjFb"
+    
+    -- Создаём временный TextBox для копирования
+    local tempInput = Instance.new("TextBox")
+    tempInput.Text = textToCopy
+    tempInput.Parent = game:GetService("CoreGui")
+    tempInput:CaptureFocus()
+    tempInput:SelectAll()
+    
+    -- Копируем в буфер обмена
+    task.wait(0.1)
+    game:GetService("UserInputService"):SetClipboard(textToCopy)
+    tempInput:ReleaseFocus()
+    tempInput:Destroy()
+    
+    -- Уведомление
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "✅ Copied!",
+        Text = "Discord link copied to clipboard",
+        Duration = 3
+    })
+end)
+
+-- Кнопка для перехода на YouTube
+Section:NewButton("Open YouTube Channel", "Click to visit Alargon's YouTube", function()
+    local youtubeUrl = "https://www.youtube.com/@AlargonsScripts"
+    
+    -- Пытаемся открыть в браузере
+    pcall(function()
+        game:GetService("GuiService"):OpenBrowserWindow(youtubeUrl)
+    end)
+    
+    -- Копируем ссылку на всякий случай
+    game:GetService("UserInputService"):SetClipboard(youtubeUrl)
+    
+    -- Уведомление
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "YouTube",
+        Text = "Link copied! Opening browser...",
+        Duration = 3
+    })
+end)
+
+Section:NewLabel("Owner - Alargon's Scripts")
+Section:NewLabel("Discord - discord.gg/SbkqJ8VjFb")
+Section:NewLabel("YouTube - youtube.com/@AlargonsScripts")
+
