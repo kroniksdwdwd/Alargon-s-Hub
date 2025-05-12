@@ -22,49 +22,52 @@ local Section = Tab:NewSection("About")
 -- Кнопка для копирования Discord
 Section:NewButton("Copy Discord Link", "Click to copy discord link", function()
     local textToCopy = "discord.gg/SbkqJ8VjFb"
+    setclipboard(textToCopy)
     
-    -- Создаём временный TextBox для копирования
-    local tempInput = Instance.new("TextBox")
-    tempInput.Text = textToCopy
-    tempInput.Parent = game:GetService("CoreGui")
-    tempInput:CaptureFocus()
-    tempInput:SelectAll()
-    
-    -- Копируем в буфер обмена
-    task.wait(0.1)
-    game:GetService("UserInputService"):SetClipboard(textToCopy)
-    tempInput:ReleaseFocus()
-    tempInput:Destroy()
-    
-    -- Уведомление
     game.StarterGui:SetCore("SendNotification", {
         Title = "✅ Copied!",
         Text = "Discord link copied to clipboard",
-        Duration = 3
+        Duration = 3,
+        Icon = "rbxassetid://6726578075" -- Иконка галочки
     })
 end)
 
--- Кнопка для перехода на YouTube
-Section:NewButton("Open YouTube Channel", "Click to visit Alargon's YouTube", function()
+-- Кнопка для YouTube (только копирование)
+Section:NewButton("Copy YouTube Link", "Click to copy YouTube channel", function()
     local youtubeUrl = "https://www.youtube.com/@AlargonsScripts"
+    setclipboard(youtubeUrl)
     
-    -- Пытаемся открыть в браузере
-    pcall(function()
-        game:GetService("GuiService"):OpenBrowserWindow(youtubeUrl)
-    end)
-    
-    -- Копируем ссылку на всякий случай
-    game:GetService("UserInputService"):SetClipboard(youtubeUrl)
-    
-    -- Уведомление
     game.StarterGui:SetCore("SendNotification", {
         Title = "YouTube",
-        Text = "Link copied! Opening browser...",
-        Duration = 3
+        Text = "Channel link copied to clipboard",
+        Duration = 3,
+        Icon = "rbxassetid://6726578075"
     })
 end)
 
+-- Альтернативная версия с попыткой открытия ссылки (если нужно)
+local function tryOpenUrl(url)
+    local success, result = pcall(function()
+        -- Способ 1: Через GuiService (если доступен)
+        if game:GetService("GuiService").OpenBrowserWindow then
+            return game:GetService("GuiService"):OpenBrowserWindow(url)
+        end
+        
+        -- Способ 2: Через текстовое окно (универсальный)
+        local text = "Please visit: "..url
+        game.StarterGui:SetCore("DevConsoleVisible", false)
+        game.StarterGui:SetCore("DevConsoleVisible", true)
+        game:GetService("TextChatService").TextChannels.RBXGeneral:SendAsync(text)
+    end)
+    
+    if not success then
+        warn("Failed to open URL: "..tostring(result))
+    end
+end
+
+-- Информационные метки
 Section:NewLabel("Owner - Alargon's Scripts")
 Section:NewLabel("Discord - discord.gg/SbkqJ8VjFb")
+Section:NewLabel("YouTube - youtube.com/@AlargonsScripts")
 Section:NewLabel("YouTube - youtube.com/@AlargonsScripts")
 
