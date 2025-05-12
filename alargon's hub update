@@ -10,7 +10,7 @@ Section:NewButton("alargon's hub I Universal", "Universal script for many games"
 end)
 
 Section:NewButton("alargon's hub I Roblox Army RP", "Special version for Army RP", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/main/alargon's%20hub.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/refs/heads/main/gaames"))()
 end)
 
 -- Вкладка с кредитами
