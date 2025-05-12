@@ -11,7 +11,6 @@ Section:NewButton("alargon's hub I Universal", "Just join to smallest server", f
 end)
 
 Section:NewButton("alargon's hub I Roblox Army RP", "Just join to smallest server", function()
-      if game.PlaceId == 18537079992 then
       loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/Alargon-s-Hub/refs/heads/main/alargon's%20hub.lua"))()
 end)
 
