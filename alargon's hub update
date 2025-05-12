@@ -19,30 +19,40 @@ end)
 local Tab = Window:NewTab("Credits")
 local Section = Tab:NewSection("About")
 
--- Кнопка для копирования Discord
-Section:NewButton("Copy Discord Link", "Click to copy Discord invite", function()
-    setclipboard("https://discord.com/invite/SbkqJ8VjFb")
-    
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "COPIED",
-        Text = "Discord invite link copied",
-        Duration = 2
-    })
-end)
-
--- Кнопка для копирования YouTube
-Section:NewButton("Copy YouTube Link", "Click to copy YouTube channel", function()
-    setclipboard("https://www.youtube.com/@AlargonsScripts")
-    
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "COPIED",
-        Text = "YouTube link copied",
-        Duration = 2
-    })
-end)
-
--- Текстовые метки
-Section:NewLabel("Owner - Alargon's Scripts")
-Section:NewLabel("Discord - discord.com/invite/SbkqJ8VjFb")
-Section:NewLabel("YouTube - youtube.com/@AlargonsScripts")
+-- Универсальная функция копирования
+local function copyToClipboard(text)
+    local input = Instance.new("TextBox")
+    input.Text = text
+    input.Parent = game:GetService("CoreGui")
+    input:CaptureFocus()
+    input:SelectAll()
+    wait(0.1)
+    game:GetService("UserInputService"):SetClipboard(text)
+    input:ReleaseFocus()
+    input:Destroy()
 end
+
+-- Кнопка для Discord
+Section:NewButton("Copy Discord", "Copies discord.com/invite/SbkqJ8VjFb", function()
+    copyToClipboard("https://discord.com/invite/SbkqJ8VjFb")
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Discord Copied",
+        Text = "Invite link copied to clipboard",
+        Duration = 2
+    })
+end)
+
+-- Кнопка для YouTube
+Section:NewButton("Copy YouTube", "Copies youtube.com/@AlargonsScripts", function()
+    copyToClipboard("https://www.youtube.com/@AlargonsScripts")
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "YouTube Copied",
+        Text = "Channel link copied to clipboard",
+        Duration = 2
+    })
+end)
+
+-- Информация
+Section:NewLabel("Developer: Alargon's Scripts")
+Section:NewLabel("Discord: discord.com/invite/SbkqJ8VjFb")
+Section:NewLabel("YouTube: youtube.com/@AlargonsScripts")
