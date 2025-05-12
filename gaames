@@ -1,0 +1,670 @@
+
+
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Robojini/Tuturial_UI_Library/main/UI_Template_1"))()
+
+local Window = Library.CreateLib("alargon's hub", "RJTheme5")
+
+local Tab = Window:NewTab("LocalPlayer")
+
+local Section = Tab:NewSection("Movement")
+
+Section:NewSlider("Speed", "Just speeds up the player", 500, 16, function(s) -- 500 (Max value) | 0 (Min value)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
+
+Section:NewTextBox("Speed", "Ez", function(txt)
+	game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = txt
+end)
+
+Section:NewSlider("Jump", "Simply increases the player's jumppower", 500, 50, function(j) -- 500 (Max value) | 0 (Min value)
+    game.Players.LocalPlayer.Character.Humanoid.JumpPower = j
+end)
+
+Section:NewTextBox("JumpPower", "Ez", function(txc)
+	game.Players.LocalPlayer.Character.Humanoid.JumpPower = txc
+end)
+
+Section:NewSlider("Gravity", "Simply increases the player's gravity", 0, 300, function(g) -- 500 (Max value) | 0 (Min value)
+    game.Workspace.Gravity = g
+end)
+
+Section:NewTextBox("Gravity", "Ez", function(txa)
+	game.Workspace.Gravity = txa
+end)
+
+Section:NewToggle("Inf Jump", "Jump in mid-air", function(state)
+    game:GetService("UserInputService").JumpRequest:Connect(function()
+        if state then
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
+    end)
+end)
+
+
+local Section = Tab:NewSection("Others")
+
+Section:NewButton("Teleport Tool", "When you take the teleport object in your hands, where you press there you teleport", function()
+	mouse = game.Players.LocalPlayer:GetMouse()
+tool = Instance.new("Tool")
+tool.RequiresHandle = false
+tool.Name = "Equip to Click TP"
+tool.Activated:connect(function()
+local pos = mouse.Hit+Vector3.new(0,2.5,0)
+pos = CFrame.new(pos.X,pos.Y,pos.Z)
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = pos
+end)
+tool.Parent = game.Players.LocalPlayer.Backpack
+end)
+
+Section:NewButton("ServerHop", "Just join to smallest server", function()
+	local Http = game:GetService("HttpService")
+local TPS = game:GetService("TeleportService")
+local Api = "https://games.roblox.com/v1/games/"
+ 
+local _place = game.PlaceId
+local _servers = Api.._place.."/servers/Public?sortOrder=Asc&limit=100"
+function ListServers(cursor)
+   local Raw = game:HttpGet(_servers .. ((cursor and "&cursor="..cursor) or ""))
+   return Http:JSONDecode(Raw)
+end
+ 
+local Server, Next; repeat
+   local Servers = ListServers(Next)
+   Server = Servers.data[1]
+   Next = Servers.nextPageCursor
+until Server
+ 
+TPS:TeleportToPlaceInstance(_place,Server.id,game:GetService('Players').LocalPlayer)
+end)
+
+
+local Tab = Window:NewTab("AimBot")
+local Section = Tab:NewSection("Advanced AimBot")
+
+-- Settings
+local aimSettings = {
+    Enabled = true,
+    Radius = 50,
+    Offset = Vector3.new(0, 0, 0),
+    Key = Enum.KeyCode.LeftAlt,
+    CircleColor = Color3.fromRGB(255, 0, 0), -- Red by default
+    Transparency = 0.5,
+    ShowCircle = true,
+    TeamCheck = true, -- Added team check
+    WallCheck = false -- Added wall visibility check
+}
+
+-- Create FOV circle using Drawing library
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = aimSettings.ShowCircle
+FOVCircle.Radius = aimSettings.Radius
+FOVCircle.Color = aimSettings.CircleColor
+FOVCircle.Thickness = 1
+FOVCircle.Filled = false
+FOVCircle.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)
+
+-- UI Controls
+Section:NewToggle("Enable AimBot", "Activates automatic aiming", function(state)
+    aimSettings.Enabled = state
+end)
+
+Section:NewSlider("Aim Radius", "Targeting radius", 200, 10, function(value)
+    aimSettings.Radius = value
+    FOVCircle.Radius = value
+end)
+
+Section:NewKeybind("Aim Key", "Key for aiming", aimSettings.Key, function()
+    -- Can be changed via settings
+end)
+
+Section:NewColorPicker("Circle Color", "FOV circle color", aimSettings.CircleColor, function(color)
+    aimSettings.CircleColor = color
+    FOVCircle.Color = color
+end)
+
+Section:NewSlider("Circle Transparency", "Circle transparency", 100, 0, function(value)
+    aimSettings.Transparency = value/100
+    FOVCircle.Transparency = 1 - value/100 -- Inverted for Drawing
+end)
+
+Section:NewToggle("Team Check", "Ignore teammates", function(state)
+    aimSettings.TeamCheck = state
+end)
+
+Section:NewToggle("Wall Check", "Only target visible enemies", function(state)
+    aimSettings.WallCheck = state
+end)
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local isAiming = false
+
+-- Check if target is visible through walls
+local function isVisible(targetPart)
+    if not aimSettings.WallCheck then return true end
+    
+    local origin = camera.CFrame.Position
+    local targetPos = targetPart.Position
+    local direction = (targetPos - origin).Unit * 1000
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {localPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+    return raycastResult and raycastResult.Instance:IsDescendantOf(targetPart.Parent)
+end
+
+-- Update circle position
+local function updateCirclePosition()
+    local mousePos = UserInputService:GetMouseLocation()
+    FOVCircle.Position = mousePos
+end
+
+-- Find closest target to cursor
+local function findNearestPlayerToCursor()
+    local mousePos = UserInputService:GetMouseLocation()
+    local nearestPlayer = nil
+    local minDistance = math.huge
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        -- Basic checks
+        if player == localPlayer then continue end
+        if not player.Character then continue end
+        if not player.Character:FindFirstChild("Humanoid") then continue end
+        if player.Character.Humanoid.Health <= 0 then continue end
+        
+        -- Team check
+        if aimSettings.TeamCheck and player.Team == localPlayer.Team then continue end
+        
+        local head = player.Character:FindFirstChild("Head")
+        if not head then continue end
+        
+        -- Visibility check
+        local headPos, onScreen = camera:WorldToViewportPoint(head.Position + aimSettings.Offset)
+        if not onScreen then continue end
+        if aimSettings.WallCheck and not isVisible(head) then continue end
+        
+        -- Distance check
+        local distance = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude
+        if distance < aimSettings.Radius and distance < minDistance then
+            minDistance = distance
+            nearestPlayer = player
+        end
+    end
+    
+    return nearestPlayer
+end
+
+-- Input handling
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == aimSettings.Key then
+        isAiming = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == aimSettings.Key then
+        isAiming = false
+    end
+end)
+
+-- Main loop
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Visible = aimSettings.ShowCircle
+    updateCirclePosition()
+    
+    if isAiming and aimSettings.Enabled then
+        local targetPlayer = findNearestPlayerToCursor()
+        if targetPlayer and targetPlayer.Character then
+            local head = targetPlayer.Character:FindFirstChild("Head")
+            if head then
+                camera.CFrame = CFrame.lookAt(camera.CFrame.Position, head.Position + aimSettings.Offset)
+            end
+        end
+    end
+end)
+
+-- Cleanup
+game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(function()
+    FOVCircle:Remove()
+end)
+
+
+local Tab = Window:NewTab("ESP")
+local Section = Tab:NewSection("Ultimate Wallhack ESP")
+
+-- Default settings
+local settings = {
+    enabled = false,
+    color = Color3.fromRGB(0, 255, 0),      -- Green for visible players
+    material = "ForceField",
+    transparency = 0.4,
+    maxDistance = 1000
+}
+
+local materials = {"Neon", "ForceField", "Glass", "Metal"}
+local highlights = {}
+
+-- Improved visibility check
+local function isVisible(targetChar)
+    local localChar = game.Players.LocalPlayer.Character
+    if not (targetChar and localChar) then return false end
+    
+    local camera = workspace.CurrentCamera
+    local targetHead = targetChar:FindFirstChild("Head")
+    local localHead = localChar:FindFirstChild("Head")
+    
+    if not (targetHead and localHead) then return false end
+    
+    -- Check distance
+    local distance = (targetHead.Position - localHead.Position).Magnitude
+    if distance > settings.maxDistance then return false end
+    
+    -- Raycast check
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {localChar, targetChar}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local rayResult = workspace:Raycast(
+        localHead.Position,
+        (targetHead.Position - localHead.Position).Unit * distance,
+        raycastParams
+    )
+    
+    return not rayResult
+end
+
+-- Create/update Highlight
+local function updatePlayerESP(player)
+    if not player.Character then return end
+    
+    if not highlights[player] then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = player.Name .. "_ESP"
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Always on top
+        highlights[player] = highlight
+        
+        -- Save original materials
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") and not part:FindFirstChild("OriginalMaterial") then
+                local original = Instance.new("StringValue")
+                original.Name = "OriginalMaterial"
+                original.Value = part.Material.Name
+                original.Parent = part
+            end
+        end
+    end
+    
+    local highlight = highlights[player]
+    local visible = isVisible(player.Character)
+    
+    -- Highlight settings
+    highlight.FillColor = settings.color
+    highlight.OutlineColor = highlight.FillColor
+    highlight.FillTransparency = visible and settings.transparency or settings.transparency
+    highlight.OutlineTransparency = 0
+    
+    -- Apply material
+    if settings.enabled then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Material = Enum.Material[settings.material]
+            end
+        end
+        highlight.Parent = player.Character
+    else
+        highlight.Parent = nil
+        -- Restore materials
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part:FindFirstChild("OriginalMaterial") then
+                part.Material = Enum.Material[part.OriginalMaterial.Value]
+            end
+        end
+    end
+end
+
+-- Interface elements
+Section:NewToggle("Enable ESP", "Activates highlight", function(state)
+    settings.enabled = state
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            updatePlayerESP(player)
+        end
+    end
+end)
+
+Section:NewColorPicker("Visible Players Color", "Main color", settings.color, function(color)
+    settings.color = color
+    if settings.enabled then
+        for player in pairs(highlights) do
+            updatePlayerESP(player)
+        end
+    end
+end)
+
+Section:NewDropdown("Material", "Highlight style", materials, function(selected)
+    settings.material = selected
+    if settings.enabled then
+        for player in pairs(highlights) do
+            updatePlayerESP(player)
+        end
+    end
+end)
+
+Section:NewSlider("Max Distance", "Visibility distance", 2000, 100, function(value)
+    settings.maxDistance = value
+end)
+
+-- Auto-update
+local heartbeat
+settings.enabled = false
+
+Section:NewToggle("Auto-update", "Smooth update", true, function(state)
+    if state then
+        heartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+            if settings.enabled then
+                for player in pairs(highlights) do
+                    if player.Character and highlights[player].Parent then
+                        highlights[player].FillColor = settings.color
+                        highlights[player].FillTransparency = settings.transparency
+                    end
+                end
+            end
+        end)
+    elseif heartbeat then
+        heartbeat:Disconnect()
+    end
+end)
+
+-- Player handlers
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        if settings.enabled then
+            updatePlayerESP(player)
+        end
+    end)
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    if highlights[player] then
+        highlights[player]:Destroy()
+        highlights[player] = nil
+    end
+end)
+
+-- Initialization
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player ~= game.Players.LocalPlayer then
+        if player.Character then
+            updatePlayerESP(player)
+        end
+        player.CharacterAdded:Connect(function()
+            if settings.enabled then
+                updatePlayerESP(player)
+            end
+        end)
+    end
+end
+
+
+
+
+
+local Section = Tab:NewSection("Other ESP")
+
+
+Section:NewButton("Name ESP", "ButtonInfo", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/dwda/main/nameesp.lua"))()
+end)
+
+Section:NewButton("Distance ESP", "ButtonInfo", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/dwda/main/distanceesp.lua"))()
+end)
+
+Section:NewButton("HealthBar ESP", "ButtonInfo", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/dwda/main/healthbaresp.lua"))()
+end)
+
+local Tab = Window:NewTab("Teleport")
+
+local Section = Tab:NewSection("Locations")
+
+Section:NewDropdown("Locations", "Locations", {"Spawn", "MSV", "SSO", "GRU", "VDV", "VP", "Medical Point", "OS", "KB", "FSB", "Mercenaries", "Prosecutor's Office", "Brokers"}, function(tp)
+    if tp == "Spawn" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(368.908661, 0.549900174, -21.7633743, -1, 0, 0, 0, 1, 0, 0, 0, -1)
+    elseif tp == "MSV" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(162.905792, 0.60099411, -132.524902, 0, 0, 1, 0, 1, -0, -1, 0, 0)
+    elseif tp == "SSO" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-182.359222, 0.600994468, -125.47496, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+    elseif tp == "GRU" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-113.669228, 0.600994468, -124.924911, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+    elseif tp == "VDV" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(229.800766, 0.600994468, -126.924911, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+    elseif tp == "VP" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-347.946777, 0.800998092, 286.299774, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+    elseif tp == "Medical Point" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-48.7750053, 0.918749988, 93.7250061, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    elseif tp == "OS" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-368.601379, 1.17876995, -23.0865154, 0.90629667, -0, -0.422642082, 0, 1, -0, 0.422642082, 0, 0.90629667)
+    elseif tp == "KB" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(599.159973, 1.5687499, -691.615112, 0, 0, 1, 0, 1, -0, -1, 0, 0)
+    elseif tp == "Mercenaries" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(572.91394, 0.80440557, -1219.34399, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+    elseif tp == "Prosecutor's Office" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-438.156494, 11.9427042, 143.974686, 0.939700544, 0, 0.341998369, 0, 1, 0, -0.341998369, 0, 0.939700544)
+    elseif tp == "Brokers" then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(3727.57666, 22.1160088, -892.698914, 0, -0.0519483648, 0.998649776, 0, 0.998649776, 0.0519483648, -1, 0, 0)
+    end
+end)
+
+local Section = Tab:NewSection("Teleport to Player")
+
+-- Get list of players
+local players = {}
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player ~= game.Players.LocalPlayer then  -- Exclude yourself from the list
+        table.insert(players, player.Name)
+    end
+end
+
+-- Create dropdown list
+Section:NewDropdown("Choose a player", "Teleport to the player", players, function(selectedPlayer)
+    local target = game.Players[selectedPlayer]
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+    else
+        warn("Player not found or dead!")
+    end
+end)
+
+-- Auto-update player list (if someone leaves/joins)
+game.Players.PlayerAdded:Connect(function()
+    players = {}
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(players, player.Name)
+        end
+    end
+end)
+
+game.Players.PlayerRemoving:Connect(function()
+    players = {}
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(players, player.Name)
+        end
+    end
+end)
+
+local Tab = Window:NewTab("World")
+
+local Section = Tab:NewSection("WorldClientSide")
+
+Section:NewToggle("Fullbright", "Always night", function()
+	if not _G.FullBrightExecuted then
+
+	_G.FullBrightEnabled = false
+
+	_G.NormalLightingSettings = {
+		Brightness = game:GetService("Lighting").Brightness,
+		ClockTime = game:GetService("Lighting").ClockTime,
+		FogEnd = game:GetService("Lighting").FogEnd,
+		GlobalShadows = game:GetService("Lighting").GlobalShadows,
+		Ambient = game:GetService("Lighting").Ambient
+	}
+
+	game:GetService("Lighting"):GetPropertyChangedSignal("Brightness"):Connect(function()
+		if game:GetService("Lighting").Brightness ~= 1 and game:GetService("Lighting").Brightness ~= _G.NormalLightingSettings.Brightness then
+			_G.NormalLightingSettings.Brightness = game:GetService("Lighting").Brightness
+			if not _G.FullBrightEnabled then
+				repeat
+					wait()
+				until _G.FullBrightEnabled
+			end
+			game:GetService("Lighting").Brightness = 1
+		end
+	end)
+
+	game:GetService("Lighting"):GetPropertyChangedSignal("ClockTime"):Connect(function()
+		if game:GetService("Lighting").ClockTime ~= 12 and game:GetService("Lighting").ClockTime ~= _G.NormalLightingSettings.ClockTime then
+			_G.NormalLightingSettings.ClockTime = game:GetService("Lighting").ClockTime
+			if not _G.FullBrightEnabled then
+				repeat
+					wait()
+				until _G.FullBrightEnabled
+			end
+			game:GetService("Lighting").ClockTime = 12
+		end
+	end)
+
+	game:GetService("Lighting"):GetPropertyChangedSignal("FogEnd"):Connect(function()
+		if game:GetService("Lighting").FogEnd ~= 786543 and game:GetService("Lighting").FogEnd ~= _G.NormalLightingSettings.FogEnd then
+			_G.NormalLightingSettings.FogEnd = game:GetService("Lighting").FogEnd
+			if not _G.FullBrightEnabled then
+				repeat
+					wait()
+				until _G.FullBrightEnabled
+			end
+			game:GetService("Lighting").FogEnd = 786543
+		end
+	end)
+
+	game:GetService("Lighting"):GetPropertyChangedSignal("GlobalShadows"):Connect(function()
+		if game:GetService("Lighting").GlobalShadows ~= false and game:GetService("Lighting").GlobalShadows ~= _G.NormalLightingSettings.GlobalShadows then
+			_G.NormalLightingSettings.GlobalShadows = game:GetService("Lighting").GlobalShadows
+			if not _G.FullBrightEnabled then
+				repeat
+					wait()
+				until _G.FullBrightEnabled
+			end
+			game:GetService("Lighting").GlobalShadows = false
+		end
+	end)
+
+	game:GetService("Lighting"):GetPropertyChangedSignal("Ambient"):Connect(function()
+		if game:GetService("Lighting").Ambient ~= Color3.fromRGB(178, 178, 178) and game:GetService("Lighting").Ambient ~= _G.NormalLightingSettings.Ambient then
+			_G.NormalLightingSettings.Ambient = game:GetService("Lighting").Ambient
+			if not _G.FullBrightEnabled then
+				repeat
+					wait()
+				until _G.FullBrightEnabled
+			end
+			game:GetService("Lighting").Ambient = Color3.fromRGB(178, 178, 178)
+		end
+	end)
+
+	game:GetService("Lighting").Brightness = 1
+	game:GetService("Lighting").ClockTime = 12
+	game:GetService("Lighting").FogEnd = 786543
+	game:GetService("Lighting").GlobalShadows = false
+	game:GetService("Lighting").Ambient = Color3.fromRGB(178, 178, 178)
+
+	local LatestValue = true
+	spawn(function()
+		repeat
+			wait()
+		until _G.FullBrightEnabled
+		while wait() do
+			if _G.FullBrightEnabled ~= LatestValue then
+				if not _G.FullBrightEnabled then
+					game:GetService("Lighting").Brightness = _G.NormalLightingSettings.Brightness
+					game:GetService("Lighting").ClockTime = _G.NormalLightingSettings.ClockTime
+					game:GetService("Lighting").FogEnd = _G.NormalLightingSettings.FogEnd
+					game:GetService("Lighting").GlobalShadows = _G.NormalLightingSettings.GlobalShadows
+					game:GetService("Lighting").Ambient = _G.NormalLightingSettings.Ambient
+				else
+					game:GetService("Lighting").Brightness = 1
+					game:GetService("Lighting").ClockTime = 12
+					game:GetService("Lighting").FogEnd = 786543
+					game:GetService("Lighting").GlobalShadows = false
+					game:GetService("Lighting").Ambient = Color3.fromRGB(178, 178, 178)
+				end
+				LatestValue = not LatestValue
+			end
+		end
+	end)
+end
+
+_G.FullBrightExecuted = true
+_G.FullBrightEnabled = not _G.FullBrightEnabled
+end)
+
+Section:NewButton("RemoveFog", "Removing fog (more fps)", function()
+	game.Lighting.FogStart = 10000000000000
+end)
+
+Section:NewButton("Boost FPS", ".", function()
+    setfpscap(60)
+    game:GetService("Lighting").GlobalShadows = false
+end)
+
+Section:NewButton("RemoveTextures", "Removing textures (more fps)", function()
+	for i,v in next, (workspace:GetDescendants()) do
+        if v:IsA("Part") then 
+            v.Material = Enum.Material.SmoothPlastic
+        end
+    end
+end)
+
+Section:NewToggle("Remove Shadows", "Removing shadows (more fps)", function(state)
+    if state then
+        game.Lighting.GlobalShadows = false
+    else
+        game.Lighting.GlobalShadows = true
+    end
+end)
+
+local Scripts = Window:NewTab("Scripts")
+local Section = Scripts:NewSection("Popular Scripts")
+local Section = Scripts:NewSection("you can send me the script in discord - danielkochivnikov")
+local Section = Scripts:NewSection("and I will add your script here!")
+
+Section:NewButton("Infinite Yield", "Execute a script", function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end)
+
+Section:NewButton("Nameless Admin", "Execute a script", function()
+	loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-nameless-admin-15646"))()
+end)
+
+Section:NewButton("alargon's hub [universal]", "Execute a script", function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end)
+
+Section:NewButton("Dex", "Execute a script", function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+end)
+
+local Tab = Window:NewTab("Settings")
+local Section = Tab:NewSection("Transparency")
+
+local Tab = Window:NewTab("Credits")
+
+local Section = Tab:NewSection("Owner - Alargon's Scripts (yt)")
+
+local Section = Tab:NewSection("Discord - discord.gg/SkqJ8VjFb")
