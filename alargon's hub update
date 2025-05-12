@@ -15,3 +15,34 @@ Section:NewButton("alargon's hub I Roblox Army RP", "Just join to smallest serve
 end)
 
 
+local Tab = Window:NewTab("Credits")
+local Section = Tab:NewSection("About")
+
+-- Надежная функция копирования
+local function CopyText(text)
+    local clipboard = game:GetService("UserInputService")
+    pcall(function() -- Безопасная попытка
+        clipboard:SetClipboard(text)
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "✓ Copied",
+            Text = "Link copied to clipboard",
+            Duration = 2
+        })
+    end)
+end
+
+-- Кнопка Discord
+Section:NewButton("Discord Invite", "Copy discord.com/invite/SbkqJ8VjFb", function()
+    CopyText("https://discord.com/invite/SbkqJ8VjFb")
+end)
+
+-- Кнопка YouTube
+Section:NewButton("YouTube Channel", "Copy youtube.com/@AlargonsScripts", function()
+    CopyText("https://www.youtube.com/@AlargonsScripts")
+end)
+
+-- Информация
+Section:NewLabel("Developer: Alargon's Scripts")
+Section:NewLabel("Support: discord.com/invite/SbkqJ8VjFb")
+Section:NewLabel("Tutorials: youtube.com/@AlargonsScripts")
+
