@@ -412,6 +412,75 @@ for _, player in pairs(game.Players:GetPlayers()) do
 end
 
 
+local Section = Tab:NewSection("Hitbox Settings")
+
+local localPlayer = game.Players.LocalPlayer
+local currentHitboxSize = 5
+local currentHitboxColor = Color3.fromRGB(255, 0, 0)
+local hitboxTransparency = 0.7
+
+-- Основная функция обработки хитбоксов
+local function processHitbox(hrp)
+    if not hrp then return end
+    
+    hrp.Size = Vector3.new(currentHitboxSize, currentHitboxSize, currentHitboxSize)
+    hrp.Transparency = hitboxTransparency
+    hrp.Color = currentHitboxColor
+    hrp.BrickColor = BrickColor.new(currentHitboxColor)
+    hrp.CanCollide = false
+    hrp.Material = Enum.Material.Neon
+end
+
+-- Функция обновления всех хитбоксов
+local function updateAllHitboxes()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            processHitbox(hrp)
+        end
+    end
+end
+
+-- Обработчик новых игроков
+local function setupPlayer(player)
+    player.CharacterAdded:Connect(function(character)
+        task.delay(0.5, function()
+            if player ~= localPlayer then
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                processHitbox(hrp)
+            end
+        end)
+    end)
+end
+
+-- Инициализация для всех игроков
+game.Players.PlayerAdded:Connect(setupPlayer)
+
+for _, player in ipairs(game.Players:GetPlayers()) do
+    setupPlayer(player)
+    if player ~= localPlayer and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        processHitbox(hrp)
+    end
+end
+
+-- UI Элементы
+Section:NewTextBox("Hitbox Size", "Enter size (1-50)", function(txt)
+    local size = tonumber(txt)
+    if size and size >= 1 and size <= 50 then
+        currentHitboxSize = size
+        updateAllHitboxes()
+        print("Hitbox size set to:", size)
+    else
+        Library:Notify("Invalid size! Use 1-50", 3)
+    end
+end)
+
+Section:NewColorPicker("Hitbox Color", "Choose color", currentHitboxColor, function(color)
+    currentHitboxColor = color
+    updateAllHitboxes()
+    print("Hitbox color changed to:", color)
+end)
 
 
 
