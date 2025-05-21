@@ -412,92 +412,330 @@ for _, player in pairs(game.Players:GetPlayers()) do
 end
 
 
-local Section = Tab:NewSection("Hitbox Settings")
-
-local localPlayer = game.Players.LocalPlayer
-local currentHitboxSize = 5
-local currentHitboxColor = Color3.fromRGB(255, 0, 0)
-local hitboxTransparency = 0.7
-
--- Основная функция обработки хитбоксов
-local function processHitbox(hrp)
-    if not hrp then return end
-    
-    hrp.Size = Vector3.new(currentHitboxSize, currentHitboxSize, currentHitboxSize)
-    hrp.Transparency = hitboxTransparency
-    hrp.Color = currentHitboxColor
-    hrp.BrickColor = BrickColor.new(currentHitboxColor)
-    hrp.CanCollide = false
-    hrp.Material = Enum.Material.Neon
-end
-
--- Функция обновления всех хитбоксов
-local function updateAllHitboxes()
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character then
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            processHitbox(hrp)
-        end
-    end
-end
-
--- Обработчик новых игроков
-local function setupPlayer(player)
-    player.CharacterAdded:Connect(function(character)
-        task.delay(0.5, function()
-            if player ~= localPlayer then
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                processHitbox(hrp)
-            end
-        end)
-    end)
-end
-
--- Инициализация для всех игроков
-game.Players.PlayerAdded:Connect(setupPlayer)
-
-for _, player in ipairs(game.Players:GetPlayers()) do
-    setupPlayer(player)
-    if player ~= localPlayer and player.Character then
-        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-        processHitbox(hrp)
-    end
-end
-
--- UI Элементы
-Section:NewTextBox("Hitbox Size", "Enter size (1-50)", function(txt)
-    local size = tonumber(txt)
-    if size and size >= 1 and size <= 50 then
-        currentHitboxSize = size
-        updateAllHitboxes()
-        print("Hitbox size set to:", size)
-    else
-        Library:Notify("Invalid size! Use 1-50", 3)
-    end
-end)
-
-Section:NewColorPicker("Hitbox Color", "Choose color", currentHitboxColor, function(color)
-    currentHitboxColor = color
-    updateAllHitboxes()
-    print("Hitbox color changed to:", color)
-end)
 
 
 
 local Section = Tab:NewSection("Other ESP")
 
+-- Общие настройки
+local settings = {
+    maxDistance = 1000,
+    textSize = 16,
+    refreshRate = 0.1
+}
 
-Section:NewButton("Name ESP", "ButtonInfo", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/dwda/main/nameesp.lua"))()
+-- Хранилище для ESP объектов
+local espObjects = {
+    nameESP = {},
+    distanceESP = {},
+    healthESP = {}
+}
+
+-- Функция очистки ESP
+local function clearESP(espType)
+    for _, obj in pairs(espObjects[espType]) do
+        if obj and obj.Parent then
+            obj:Destroy()
+        end
+    end
+    espObjects[espType] = {}
+end
+
+-- Name ESP
+local nameESPConfig = {
+    enabled = false,
+    textHeight = 4,
+    textColor = Color3.new(1, 1, 1),
+    teamColor = true,
+    outlineColor = Color3.new(0, 0, 0),
+    transparency = 0
+}
+
+local function createNameESP(player)
+    if player == game.Players.LocalPlayer then return end
+    
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_NameESP"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, nameESPConfig.textHeight, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = settings.maxDistance
+    billboard.Enabled = nameESPConfig.enabled
+    billboard.Parent = character
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "NameLabel"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextScaled = false
+    textLabel.TextSize = settings.textSize
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextColor3 = nameESPConfig.textColor
+    textLabel.TextStrokeColor3 = nameESPConfig.outlineColor
+    textLabel.TextStrokeTransparency = nameESPConfig.transparency
+    textLabel.Text = player.Name
+    textLabel.Parent = billboard
+    
+    espObjects.nameESP[player] = billboard
+    
+    local function updateESP()
+        if not character or not humanoidRootPart or not billboard or not textLabel then return end
+        
+        if nameESPConfig.teamColor and player.Team then
+            textLabel.TextColor3 = player.TeamColor.Color
+        else
+            textLabel.TextColor3 = nameESPConfig.textColor
+        end
+        
+        local distance = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        billboard.Enabled = nameESPConfig.enabled and distance <= settings.maxDistance
+    end
+    
+    local connection
+    connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not character or not character:FindFirstChild("HumanoidRootPart") then
+            connection:Disconnect()
+            return
+        end
+        updateESP()
+    end)
+    
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            if billboard then billboard:Destroy() end
+            if connection then connection:Disconnect() end
+            espObjects.nameESP[player] = nil
+        end
+    end)
+end
+
+-- Distance ESP
+local distanceESPConfig = {
+    enabled = false,
+    textHeight = 5,
+    textColor = Color3.new(1, 1, 1),
+    outlineColor = Color3.new(0, 0, 0),
+    transparency = 0
+}
+
+local function createDistanceESP(player)
+    if player == game.Players.LocalPlayer then return end
+    
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_DistanceESP"
+    billboard.Adornee = humanoidRootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, distanceESPConfig.textHeight, 0)
+    billboard.AlwaysOnTop = true
+    billboard.MaxDistance = settings.maxDistance
+    billboard.Enabled = distanceESPConfig.enabled
+    billboard.Parent = character
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "DistanceLabel"
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextScaled = false
+    textLabel.TextSize = settings.textSize
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextColor3 = distanceESPConfig.textColor
+    textLabel.TextStrokeColor3 = distanceESPConfig.outlineColor
+    textLabel.TextStrokeTransparency = distanceESPConfig.transparency
+    textLabel.Text = ""
+    textLabel.Parent = billboard
+    
+    espObjects.distanceESP[player] = billboard
+    
+    local function updateESP()
+        if not character or not humanoidRootPart or not billboard or not textLabel then return end
+        
+        local distance = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        textLabel.Text = math.floor(distance) .. " studs"
+        billboard.Enabled = distanceESPConfig.enabled and distance <= settings.maxDistance
+    end
+    
+    local connection
+    connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not character or not character:FindFirstChild("HumanoidRootPart") then
+            connection:Disconnect()
+            return
+        end
+        updateESP()
+    end)
+    
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            if billboard then billboard:Destroy() end
+            if connection then connection:Disconnect() end
+            espObjects.distanceESP[player] = nil
+        end
+    end)
+end
+
+-- HealthBar ESP
+local healthESPConfig = {
+    enabled = false,
+    barHeight = 0.3,
+    barWidth = 3,
+    barOffset = Vector3.new(0, 3, 0),
+    teamColor = true,
+    teamColorValue = Color3.fromRGB(0, 250, 0),
+    enemyColor = Color3.fromRGB(250, 0, 0),
+    backgroundColor = Color3.fromRGB(50, 50, 50),
+    textColor = Color3.fromRGB(255, 255, 255),
+    textSize = 15,
+    textOffset = Vector3.new(0, 1.5, 0)
+}
+
+local function createHealthESP(player)
+    if player == game.Players.LocalPlayer then return end
+    
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_HealthESP"
+    billboard.Size = UDim2.new(healthESPConfig.barWidth, 0, healthESPConfig.barHeight, 0)
+    billboard.AlwaysOnTop = true
+    billboard.LightInfluence = 0
+    billboard.MaxDistance = settings.maxDistance
+    billboard.StudsOffset = healthESPConfig.barOffset
+    billboard.Enabled = healthESPConfig.enabled
+    billboard.Parent = humanoidRootPart
+    
+    local background = Instance.new("Frame")
+    background.Name = "Background"
+    background.Size = UDim2.new(1, 0, 1, 0)
+    background.BackgroundColor3 = healthESPConfig.backgroundColor
+    background.BorderSizePixel = 0
+    background.ZIndex = 1
+    background.Parent = billboard
+    
+    local healthBar = Instance.new("Frame")
+    healthBar.Name = "Health"
+    healthBar.Size = UDim2.new(1, 0, 1, 0)
+    healthBar.BackgroundColor3 = healthESPConfig.enemyColor
+    healthBar.BorderSizePixel = 0
+    healthBar.ZIndex = 2
+    healthBar.Parent = billboard
+    
+    local healthText = Instance.new("TextLabel")
+    healthText.Name = "HealthText"
+    healthText.Size = UDim2.new(2, 0, 1, 0)
+    healthText.Position = UDim2.new(-0.5, 0, -1, 0)
+    healthText.BackgroundTransparency = 1
+    healthText.TextColor3 = healthESPConfig.textColor
+    healthText.TextSize = healthESPConfig.textSize
+    healthText.Font = Enum.Font.SourceSansBold
+    healthText.Text = "100/100"
+    healthText.ZIndex = 3
+    healthText.Parent = billboard
+    
+    espObjects.healthESP[player] = billboard
+    
+    local function updateESP()
+        if not character or not humanoid or not humanoidRootPart or not billboard then return end
+        
+        local healthPercent = humanoid.Health / humanoid.MaxHealth
+        healthBar.Size = UDim2.new(healthPercent, 0, 1, 0)
+        
+        if healthESPConfig.teamColor and player.Team == game.Players.LocalPlayer.Team then
+            healthBar.BackgroundColor3 = healthESPConfig.teamColorValue
+        else
+            healthBar.BackgroundColor3 = healthESPConfig.enemyColor
+        end
+        
+        healthText.Text = math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+        
+        local distance = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        billboard.Enabled = healthESPConfig.enabled and distance <= settings.maxDistance
+    end
+    
+    local connection
+    connection = humanoid.HealthChanged:Connect(updateESP)
+    
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            if billboard then billboard:Destroy() end
+            if connection then connection:Disconnect() end
+            espObjects.healthESP[player] = nil
+        end
+    end)
+    
+    updateESP()
+end
+
+-- Инициализация ESP для всех игроков
+local function initializeESP()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            if nameESPConfig.enabled then createNameESP(player) end
+            if distanceESPConfig.enabled then createDistanceESP(player) end
+            if healthESPConfig.enabled then createHealthESP(player) end
+        end
+    end
+end
+
+-- Обработка новых игроков
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        if nameESPConfig.enabled then createNameESP(player) end
+        if distanceESPConfig.enabled then createDistanceESP(player) end
+        if healthESPConfig.enabled then createHealthESP(player) end
+    end)
 end)
 
-Section:NewButton("Distance ESP", "ButtonInfo", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/dwda/main/distanceesp.lua"))()
+-- Тогглы в UI
+Section:NewToggle("Name ESP", "Показывать имена игроков", function(state)
+    nameESPConfig.enabled = state
+    if state then
+        for _, player in ipairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                createNameESP(player)
+            end
+        end
+    else
+        clearESP("nameESP")
+    end
 end)
 
-Section:NewButton("HealthBar ESP", "ButtonInfo", function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/kroniksdwdwd/dwda/main/healthbaresp.lua"))()
+Section:NewToggle("Distance ESP", "Показывать расстояние до игроков", function(state)
+    distanceESPConfig.enabled = state
+    if state then
+        for _, player in ipairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                createDistanceESP(player)
+            end
+        end
+    else
+        clearESP("distanceESP")
+    end
 end)
+
+Section:NewToggle("HealthBar ESP", "Показывать здоровье игроков", function(state)
+    healthESPConfig.enabled = state
+    if state then
+        for _, player in ipairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                createHealthESP(player)
+            end
+        end
+    else
+        clearESP("healthESP")
+    end
+end)
+
+-- Инициализация при запуске
+initializeESP()
+
 
 local Tab = Window:NewTab("Teleport")
 
