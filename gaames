@@ -79,33 +79,46 @@ end)
 
 
 local Tab = Window:NewTab("AimBot")
-local Section = Tab:NewSection("Advanced AimBot")
+local Section = Tab:NewSection("Aim Configuration I AimKey-LeftAlt")
 
--- Settings
+-- Settings (все настройки по умолчанию выключены)
 local aimSettings = {
-    Enabled = true,
+    Enabled = false,
     Radius = 50,
+    AimSpeed = 0.2,
+    Key = Enum.KeyCode.LeftAlt,  -- Клавиша по умолчанию
     Offset = Vector3.new(0, 0, 0),
-    Key = Enum.KeyCode.LeftAlt,
-    CircleColor = Color3.fromRGB(255, 0, 0), -- Red by default
+    CircleColor = Color3.fromRGB(255, 0, 0),
     Transparency = 0.5,
-    ShowCircle = true,
-    TeamCheck = true, -- Added team check
-    WallCheck = false -- Added wall visibility check
+    ShowCircle = false,
+    TeamCheck = false,
+    WallCheck = false,
+    PersistentCircle = false
 }
 
--- Create FOV circle using Drawing library
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Create FOV circle
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = aimSettings.ShowCircle
 FOVCircle.Radius = aimSettings.Radius
 FOVCircle.Color = aimSettings.CircleColor
-FOVCircle.Thickness = 1
+FOVCircle.Thickness = 1.5
 FOVCircle.Filled = false
-FOVCircle.Position = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)
+FOVCircle.Transparency = 1 - aimSettings.Transparency
+FOVCircle.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
 
--- UI Controls
-Section:NewToggle("Enable AimBot", "Activates automatic aiming", function(state)
+
+-- Элементы UI
+Section:NewToggle("Enable AimBot", "Toggles aim assist", function(state)
     aimSettings.Enabled = state
+    FOVCircle.Visible = state and aimSettings.ShowCircle
 end)
 
 Section:NewSlider("Aim Radius", "Targeting radius", 200, 10, function(value)
@@ -113,9 +126,11 @@ Section:NewSlider("Aim Radius", "Targeting radius", 200, 10, function(value)
     FOVCircle.Radius = value
 end)
 
-Section:NewKeybind("Aim Key", "Key for aiming", aimSettings.Key, function()
-    -- Can be changed via settings
+Section:NewSlider("Aim Speed", "Adjust aiming speed", 100, 10, function(value)
+    aimSettings.AimSpeed = value/100
 end)
+
+
 
 Section:NewColorPicker("Circle Color", "FOV circle color", aimSettings.CircleColor, function(color)
     aimSettings.CircleColor = color
@@ -124,7 +139,12 @@ end)
 
 Section:NewSlider("Circle Transparency", "Circle transparency", 100, 0, function(value)
     aimSettings.Transparency = value/100
-    FOVCircle.Transparency = 1 - value/100 -- Inverted for Drawing
+    FOVCircle.Transparency = 1 - value/100
+end)
+
+Section:NewToggle("Show Circle", "Show FOV circle", function(state)
+    aimSettings.ShowCircle = state
+    FOVCircle.Visible = state and aimSettings.Enabled
 end)
 
 Section:NewToggle("Team Check", "Ignore teammates", function(state)
@@ -135,15 +155,7 @@ Section:NewToggle("Wall Check", "Only target visible enemies", function(state)
     aimSettings.WallCheck = state
 end)
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local localPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-local isAiming = false
-
--- Check if target is visible through walls
+-- Visibility check
 local function isVisible(targetPart)
     if not aimSettings.WallCheck then return true end
     
@@ -159,37 +171,25 @@ local function isVisible(targetPart)
     return raycastResult and raycastResult.Instance:IsDescendantOf(targetPart.Parent)
 end
 
--- Update circle position
-local function updateCirclePosition()
-    local mousePos = UserInputService:GetMouseLocation()
-    FOVCircle.Position = mousePos
-end
-
--- Find closest target to cursor
+-- Find nearest player
 local function findNearestPlayerToCursor()
     local mousePos = UserInputService:GetMouseLocation()
     local nearestPlayer = nil
     local minDistance = math.huge
     
     for _, player in pairs(Players:GetPlayers()) do
-        -- Basic checks
         if player == localPlayer then continue end
         if not player.Character then continue end
         if not player.Character:FindFirstChild("Humanoid") then continue end
-        if player.Character.Humanoid.Health <= 0 then continue end
-        
-        -- Team check
         if aimSettings.TeamCheck and player.Team == localPlayer.Team then continue end
         
         local head = player.Character:FindFirstChild("Head")
         if not head then continue end
         
-        -- Visibility check
         local headPos, onScreen = camera:WorldToViewportPoint(head.Position + aimSettings.Offset)
         if not onScreen then continue end
         if aimSettings.WallCheck and not isVisible(head) then continue end
         
-        -- Distance check
         local distance = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude
         if distance < aimSettings.Radius and distance < minDistance then
             minDistance = distance
@@ -200,39 +200,38 @@ local function findNearestPlayerToCursor()
     return nearestPlayer
 end
 
--- Input handling
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == aimSettings.Key then
-        isAiming = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.KeyCode == aimSettings.Key then
-        isAiming = false
-    end
-end)
+-- Smooth aim function
+local function smoothAim(targetPosition)
+    local currentCFrame = camera.CFrame
+    local targetCFrame = CFrame.lookAt(currentCFrame.Position, targetPosition + aimSettings.Offset)
+    
+    local tweenInfo = TweenInfo.new(
+        math.max(0.05, 0.5 - (aimSettings.AimSpeed * 0.45)),
+        Enum.EasingStyle.Sine,
+        Enum.EasingDirection.Out
+    )
+    
+    local tween = TweenService:Create(camera, tweenInfo, {CFrame = targetCFrame})
+    tween:Play()
+end
 
 -- Main loop
 RunService.RenderStepped:Connect(function()
-    FOVCircle.Visible = aimSettings.ShowCircle
-    updateCirclePosition()
+    FOVCircle.Visible = aimSettings.ShowCircle and aimSettings.Enabled
+    FOVCircle.Position = UserInputService:GetMouseLocation()
     
-    if isAiming and aimSettings.Enabled then
+    if aimSettings.Enabled and UserInputService:IsKeyDown(aimSettings.Key) then
         local targetPlayer = findNearestPlayerToCursor()
         if targetPlayer and targetPlayer.Character then
             local head = targetPlayer.Character:FindFirstChild("Head")
             if head then
-                camera.CFrame = CFrame.lookAt(camera.CFrame.Position, head.Position + aimSettings.Offset)
+                smoothAim(head.Position)
             end
         end
     end
 end)
 
--- Cleanup
-game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(function()
-    FOVCircle:Remove()
-end)
+
 
 
 local Section = Tab:NewSection("Hitbox Settings")
