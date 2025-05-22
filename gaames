@@ -2,7 +2,7 @@
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Robojini/Tuturial_UI_Library/main/UI_Template_1"))()
 
-local Window = Library.CreateLib("alargon's hub I Roblox Army RP", "RJTheme5")
+local Window = Library.CreateLib("alargon's hub I Army Roblox RP", "RJTheme5")
 
 local Tab = Window:NewTab("LocalPlayer")
 
@@ -411,330 +411,228 @@ for _, player in pairs(game.Players:GetPlayers()) do
     end
 end
 
-
-
-
-
 local Section = Tab:NewSection("Other ESP")
 
--- Общие настройки
-local settings = {
-    maxDistance = 1000,
-    textSize = 16,
-    refreshRate = 0.1
+-- Your ESP script starts here
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Настройки ESP
+local ESP = {
+    Enabled = false,
+    ShowBox = false,
+    ShowName = false,
+    ShowDistance = false,
+    ShowHealthBar = false, -- по умолчанию выключено
+    TeamCheck = false,
+    BoxColor = Color3.fromRGB(255, 0, 0),
+    BoxThickness = 1,
+    BoxTransparency = 0.7,
+    TeamColor = Color3.fromRGB(0, 255, 0),
+    HealthBarColor = Color3.fromRGB(0, 255, 0),
 }
 
--- Хранилище для ESP объектов
-local espObjects = {
-    nameESP = {},
-    distanceESP = {},
-    healthESP = {}
-}
+Section:NewToggle("Включить ESP", "Показывает ESP на игроках", function(state)
+    ESP.Enabled = state
+end, false) -- false: по умолчанию выключено
 
--- Функция очистки ESP
-local function clearESP(espType)
-    for _, obj in pairs(espObjects[espType]) do
-        if obj and obj.Parent then
-            obj:Destroy()
-        end
-    end
-    espObjects[espType] = {}
-end
+Section:NewToggle("Показать боксы", "Визуальные боксы вокруг игроков", function(state)
+    ESP.ShowBox = state
+end, false)
 
--- Name ESP
-local nameESPConfig = {
-    enabled = false,
-    textHeight = 4,
-    textColor = Color3.new(1, 1, 1),
-    teamColor = true,
-    outlineColor = Color3.new(0, 0, 0),
-    transparency = 0
-}
+Section:NewToggle("Показать имена", "Показывает имена игроков", function(state)
+    ESP.ShowName = state
+end, false)
 
-local function createNameESP(player)
-    if player == game.Players.LocalPlayer then return end
-    
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = player.Name .. "_NameESP"
-    billboard.Adornee = humanoidRootPart
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, nameESPConfig.textHeight, 0)
-    billboard.AlwaysOnTop = true
-    billboard.MaxDistance = settings.maxDistance
-    billboard.Enabled = nameESPConfig.enabled
-    billboard.Parent = character
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "NameLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextScaled = false
-    textLabel.TextSize = settings.textSize
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextColor3 = nameESPConfig.textColor
-    textLabel.TextStrokeColor3 = nameESPConfig.outlineColor
-    textLabel.TextStrokeTransparency = nameESPConfig.transparency
-    textLabel.Text = player.Name
-    textLabel.Parent = billboard
-    
-    espObjects.nameESP[player] = billboard
-    
-    local function updateESP()
-        if not character or not humanoidRootPart or not billboard or not textLabel then return end
-        
-        if nameESPConfig.teamColor and player.Team then
-            textLabel.TextColor3 = player.TeamColor.Color
-        else
-            textLabel.TextColor3 = nameESPConfig.textColor
-        end
-        
-        local distance = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-        billboard.Enabled = nameESPConfig.enabled and distance <= settings.maxDistance
-    end
-    
-    local connection
-    connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not character or not character:FindFirstChild("HumanoidRootPart") then
-            connection:Disconnect()
+Section:NewToggle("Показать дистанцию", "Показывает расстояние до игроков", function(state)
+    ESP.ShowDistance = state
+end, false)
+
+Section:NewToggle("Показать полоску здоровья", "Показывает вертикальную полоску здоровья", function(state)
+    ESP.ShowHealthBar = state
+end, false)
+
+Section:NewToggle("Team Check", "Игнорирует союзников", function(state)
+    ESP.TeamCheck = state
+end, false)
+
+Section:NewColorPicker("Box Color", "Цвет боксов", ESP.BoxColor, function(color)
+    ESP.BoxColor = color
+end)
+
+Section:NewColorPicker("Team Color", "Цвет союзников", ESP.TeamColor, function(color)
+    ESP.TeamColor = color
+end)
+
+-- Хранилище объектов ESP
+local ESPObjects = {}
+
+local function CreateESP(player)
+    if ESPObjects[player] then return end
+
+    local drawings = {
+        Box = Drawing.new("Square"),
+        Name = Drawing.new("Text"),
+        Distance = Drawing.new("Text"),
+        HealthBar = Drawing.new("Line"), -- полоска здоровья
+    }
+
+    -- Настройка бокса
+    drawings.Box.Visible = false
+    drawings.Box.Color = ESP.BoxColor
+    drawings.Box.Thickness = ESP.BoxThickness
+    drawings.Box.Transparency = ESP.BoxTransparency
+    drawings.Box.Filled = false
+
+    -- Настройка имени
+    drawings.Name.Visible = false
+    drawings.Name.Size = 14
+    drawings.Name.Center = true
+    drawings.Name.Outline = true
+
+    -- Настройка дистанции
+    drawings.Distance.Visible = false
+    drawings.Distance.Size = 12
+    drawings.Distance.Center = true
+    drawings.Distance.Outline = true
+
+    -- Настройка полоски здоровья
+    drawings.HealthBar.Visible = false
+    drawings.HealthBar.Color = ESP.HealthBarColor
+    drawings.HealthBar.Thickness = 3
+
+    ESPObjects[player] = {
+        Drawings = drawings,
+        Connections = {}
+    }
+
+    local function UpdateESP()
+        if not ESP.Enabled or not player.Character then
+            drawings.Box.Visible = false
+            drawings.Name.Visible = false
+            drawings.Distance.Visible = false
+            drawings.HealthBar.Visible = false
             return
         end
-        updateESP()
-    end)
-    
-    character.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            if billboard then billboard:Destroy() end
-            if connection then connection:Disconnect() end
-            espObjects.nameESP[player] = nil
-        end
-    end)
-end
 
--- Distance ESP
-local distanceESPConfig = {
-    enabled = false,
-    textHeight = 5,
-    textColor = Color3.new(1, 1, 1),
-    outlineColor = Color3.new(0, 0, 0),
-    transparency = 0
-}
+        local character = player.Character
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        local lowerTorso = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-local function createDistanceESP(player)
-    if player == game.Players.LocalPlayer then return end
-    
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = player.Name .. "_DistanceESP"
-    billboard.Adornee = humanoidRootPart
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, distanceESPConfig.textHeight, 0)
-    billboard.AlwaysOnTop = true
-    billboard.MaxDistance = settings.maxDistance
-    billboard.Enabled = distanceESPConfig.enabled
-    billboard.Parent = character
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "DistanceLabel"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextScaled = false
-    textLabel.TextSize = settings.textSize
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextColor3 = distanceESPConfig.textColor
-    textLabel.TextStrokeColor3 = distanceESPConfig.outlineColor
-    textLabel.TextStrokeTransparency = distanceESPConfig.transparency
-    textLabel.Text = ""
-    textLabel.Parent = billboard
-    
-    espObjects.distanceESP[player] = billboard
-    
-    local function updateESP()
-        if not character or not humanoidRootPart or not billboard or not textLabel then return end
-        
-        local distance = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-        textLabel.Text = math.floor(distance) .. " studs"
-        billboard.Enabled = distanceESPConfig.enabled and distance <= settings.maxDistance
-    end
-    
-    local connection
-    connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not character or not character:FindFirstChild("HumanoidRootPart") then
-            connection:Disconnect()
+        if not root or not head or not lowerTorso or not humanoid then
+            drawings.Box.Visible = false
+            drawings.Name.Visible = false
+            drawings.Distance.Visible = false
+            drawings.HealthBar.Visible = false
             return
         end
-        updateESP()
-    end)
-    
-    character.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            if billboard then billboard:Destroy() end
-            if connection then connection:Disconnect() end
-            espObjects.distanceESP[player] = nil
+
+        local headPos, headOnScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position)
+        local torsoPos, torsoOnScreen = workspace.CurrentCamera:WorldToViewportPoint(lowerTorso.Position)
+
+        if not (headOnScreen and torsoOnScreen) then
+            drawings.Box.Visible = false
+            drawings.Name.Visible = false
+            drawings.Distance.Visible = false
+            drawings.HealthBar.Visible = false
+            return
         end
-    end)
-end
 
--- HealthBar ESP
-local healthESPConfig = {
-    enabled = false,
-    barHeight = 0.3,
-    barWidth = 3,
-    barOffset = Vector3.new(0, 3, 0),
-    teamColor = true,
-    teamColorValue = Color3.fromRGB(0, 250, 0),
-    enemyColor = Color3.fromRGB(250, 0, 0),
-    backgroundColor = Color3.fromRGB(50, 50, 50),
-    textColor = Color3.fromRGB(255, 255, 255),
-    textSize = 15,
-    textOffset = Vector3.new(0, 1.5, 0)
-}
+        local color = ESP.BoxColor
+        if ESP.TeamCheck and player.Team == LocalPlayer.Team then
+            color = ESP.TeamColor
+        end
 
-local function createHealthESP(player)
-    if player == game.Players.LocalPlayer then return end
-    
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = player.Name .. "_HealthESP"
-    billboard.Size = UDim2.new(healthESPConfig.barWidth, 0, healthESPConfig.barHeight, 0)
-    billboard.AlwaysOnTop = true
-    billboard.LightInfluence = 0
-    billboard.MaxDistance = settings.maxDistance
-    billboard.StudsOffset = healthESPConfig.barOffset
-    billboard.Enabled = healthESPConfig.enabled
-    billboard.Parent = humanoidRootPart
-    
-    local background = Instance.new("Frame")
-    background.Name = "Background"
-    background.Size = UDim2.new(1, 0, 1, 0)
-    background.BackgroundColor3 = healthESPConfig.backgroundColor
-    background.BorderSizePixel = 0
-    background.ZIndex = 1
-    background.Parent = billboard
-    
-    local healthBar = Instance.new("Frame")
-    healthBar.Name = "Health"
-    healthBar.Size = UDim2.new(1, 0, 1, 0)
-    healthBar.BackgroundColor3 = healthESPConfig.enemyColor
-    healthBar.BorderSizePixel = 0
-    healthBar.ZIndex = 2
-    healthBar.Parent = billboard
-    
-    local healthText = Instance.new("TextLabel")
-    healthText.Name = "HealthText"
-    healthText.Size = UDim2.new(2, 0, 1, 0)
-    healthText.Position = UDim2.new(-0.5, 0, -1, 0)
-    healthText.BackgroundTransparency = 1
-    healthText.TextColor3 = healthESPConfig.textColor
-    healthText.TextSize = healthESPConfig.textSize
-    healthText.Font = Enum.Font.SourceSansBold
-    healthText.Text = "100/100"
-    healthText.ZIndex = 3
-    healthText.Parent = billboard
-    
-    espObjects.healthESP[player] = billboard
-    
-    local function updateESP()
-        if not character or not humanoid or not humanoidRootPart or not billboard then return end
-        
-        local healthPercent = humanoid.Health / humanoid.MaxHealth
-        healthBar.Size = UDim2.new(healthPercent, 0, 1, 0)
-        
-        if healthESPConfig.teamColor and player.Team == game.Players.LocalPlayer.Team then
-            healthBar.BackgroundColor3 = healthESPConfig.teamColorValue
+        local height = math.abs(torsoPos.Y - headPos.Y) * 2
+        local width = height / 1.8
+        local centerX = torsoPos.X
+        local centerY = (headPos.Y + torsoPos.Y) / 2
+
+        -- Бокс
+        drawings.Box.Size = Vector2.new(width, height)
+        drawings.Box.Position = Vector2.new(centerX - width / 2, centerY - height / 2)
+        drawings.Box.Color = color
+        drawings.Box.Visible = ESP.ShowBox
+
+        -- Имя
+        if ESP.ShowName then
+            drawings.Name.Text = player.Name
+            drawings.Name.Position = Vector2.new(centerX, centerY - height / 2 - 15)
+            drawings.Name.Color = color
+            drawings.Name.Visible = true
         else
-            healthBar.BackgroundColor3 = healthESPConfig.enemyColor
+            drawings.Name.Visible = false
         end
-        
-        healthText.Text = math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
-        
-        local distance = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-        billboard.Enabled = healthESPConfig.enabled and distance <= settings.maxDistance
+
+        -- Дистанция
+        if ESP.ShowDistance and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude
+            drawings.Distance.Text = string.format("%.1f studs", distance)
+            drawings.Distance.Position = Vector2.new(centerX, centerY + height / 2 + 5)
+            drawings.Distance.Color = color
+            drawings.Distance.Visible = true
+        else
+            drawings.Distance.Visible = false
+        end
+
+        -- Полоска здоровья
+        if ESP.ShowHealthBar then
+            local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+            local barHeight = height * healthPercent
+            local barX = centerX - width / 2 - 8  -- слева от бокса с отступом 6 пикселей
+            local barYStart = centerY + height / 2
+            local barYEnd = barYStart - barHeight
+
+            drawings.HealthBar.From = Vector2.new(barX, barYStart)
+            drawings.HealthBar.To = Vector2.new(barX, barYEnd)
+            -- Цвет от зелёного (здоров) к красному (мало здоровья)
+            drawings.HealthBar.Color = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
+            drawings.HealthBar.Visible = true
+        else
+            drawings.HealthBar.Visible = false
+        end
     end
-    
-    local connection
-    connection = humanoid.HealthChanged:Connect(updateESP)
-    
-    character.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            if billboard then billboard:Destroy() end
-            if connection then connection:Disconnect() end
-            espObjects.healthESP[player] = nil
-        end
-    end)
-    
-    updateESP()
+
+    ESPObjects[player].Connections.Render = RunService.RenderStepped:Connect(UpdateESP)
+    ESPObjects[player].Connections.CharacterAdded = player.CharacterAdded:Connect(UpdateESP)
 end
 
--- Инициализация ESP для всех игроков
-local function initializeESP()
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        if player ~= game.Players.LocalPlayer then
-            if nameESPConfig.enabled then createNameESP(player) end
-            if distanceESPConfig.enabled then createDistanceESP(player) end
-            if healthESPConfig.enabled then createHealthESP(player) end
-        end
+local function RemoveESP(player)
+    if not ESPObjects[player] then return end
+    for _, conn in pairs(ESPObjects[player].Connections) do
+        conn:Disconnect()
+    end
+    for _, drawing in pairs(ESPObjects[player].Drawings) do
+        drawing:Remove()
+    end
+    ESPObjects[player] = nil
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        CreateESP(player)
     end
 end
 
--- Обработка новых игроков
-game.Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        if nameESPConfig.enabled then createNameESP(player) end
-        if distanceESPConfig.enabled then createDistanceESP(player) end
-        if healthESPConfig.enabled then createHealthESP(player) end
-    end)
-end)
-
--- Тогглы в UI
-Section:NewToggle("Name ESP", "Показывать имена игроков", function(state)
-    nameESPConfig.enabled = state
-    if state then
-        for _, player in ipairs(game.Players:GetPlayers()) do
-            if player ~= game.Players.LocalPlayer then
-                createNameESP(player)
-            end
-        end
-    else
-        clearESP("nameESP")
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        CreateESP(player)
     end
 end)
 
-Section:NewToggle("Distance ESP", "Показывать расстояние до игроков", function(state)
-    distanceESPConfig.enabled = state
-    if state then
-        for _, player in ipairs(game.Players:GetPlayers()) do
-            if player ~= game.Players.LocalPlayer then
-                createDistanceESP(player)
-            end
-        end
-    else
-        clearESP("distanceESP")
-    end
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
 end)
 
-Section:NewToggle("HealthBar ESP", "Показывать здоровье игроков", function(state)
-    healthESPConfig.enabled = state
-    if state then
-        for _, player in ipairs(game.Players:GetPlayers()) do
-            if player ~= game.Players.LocalPlayer then
-                createHealthESP(player)
-            end
-        end
-    else
-        clearESP("healthESP")
+LocalPlayer.CharacterRemoving:Connect(function()
+    for player in pairs(ESPObjects) do
+        RemoveESP(player)
     end
 end)
-
--- Инициализация при запуске
-initializeESP()
+-- Your ESP script ends here
 
 
 local Tab = Window:NewTab("Teleport")
